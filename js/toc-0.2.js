@@ -248,7 +248,7 @@
   TOC.version = "0.2";
 
   // define private variables;
-  var _console = window.console || {log: function(){} }; // ensure calling console doesn't cause errors.
+  var _console = _win.console || {log: function(){} }; // ensure calling console doesn't cause errors.
   var _log = function(){if (TOC.debug === 'development') {_console.log.apply(_console,arguments);} };
   var _rowData = {}; // stores all data passed by each row;
   var _rows = {}; // stores rows to check for uniques
