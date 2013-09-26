@@ -19,13 +19,13 @@ TOCjs is for Developers.  Specifically those asking:
 ## How to use TOCjs?
 ### Use the Default Sections
 
-'''javascript
+```JavaScript
 TOC({
   LOCATIONS: {},
   SCRIPTS: {},
   FUNCTIONS: {}
 });
-'''
+```
 
 #### LOCATIONS: Take Actions When an URL Matches
 #### SCRIPTS: Load JavaScript When A Location Matches
