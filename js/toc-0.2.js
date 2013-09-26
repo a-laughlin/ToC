@@ -180,21 +180,21 @@
    */
   TOC.sectionHandlers = {
     SHORTCUTS:{
-      parse:function(rowKey, rowObj, requirementsObjs){
+      parse:function(rowKey, rowObj, whenObjs){
         // to aggregate common names as shortcuts
         return {};
       }
     },
     LOCATIONS: {
       // provides location-dependent row execution
-      parse: function (rowKey, rowObj, requirementsObjs) {
+      parse: function (rowKey, rowObj, whenObjs) {
         return (new RegExp(rowObj.href).test(location.href)) ? // does the specified location match the current href?
           {location: rowObj.href } : // yes, return the row's specified location object
           {publish: false }; // no, do not publish the row
       }
     },
     FILES: {
-      parse: function (rowKey, rowObj, requirementsObjs) {
+      parse: function (rowKey, rowObj, whenObjs) {
         // provides files-dependent row execution
         return $.ajax({
           url: rowObj.load,
@@ -208,7 +208,7 @@
     },
     FUNCTIONS: {
       // executes any functions on the row
-      parse: function (rowKey, rowObj, requirementsObjs){
+      parse: function (rowKey, rowObj, whenObjs){
 
         // parsing helper functions
         function execRowFns(event){ // determine whether to exec one function or many
