@@ -40,7 +40,7 @@ Let's say we want to load a file called "home.js" that has functions we want on 
 ```JavaScript
 TOC({
   SCRIPTS: {
-    homepage_js:{ load:'homepage.js' }
+    home_js:{ load:'home.js' }
   },
   LOCATIONS: {},
   FUNCTIONS: {}
