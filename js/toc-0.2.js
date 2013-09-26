@@ -1,5 +1,5 @@
 /*!
- * ToCjs.  A Table of Contents for your site's code.
+ * TOCjs.  A Table of Contents for your site's code.
  *
  * Version 0.2
  *
@@ -12,18 +12,22 @@
  * http://static.a-laughlin.com/gpl_license.txt
  */
 
-// initialize ToC fn and set window.ToC
 ;(function ($, _win) {
   'use strict';
   
-  // parses a Table of Contents object
-  function ToC(tableObj) {
+  if($.fn.jquery < '1.7') {throw "TOCjs requires jQuery.Deferred() and 'jQuery.fn.on()'. Please use at least jQuery 1.7"}  
+  
+  /* Public function TOC
+   * Parses a Table of Contents object
+   * Param tableObj Object: The Table of Contents Object Literal
+   * Returns the Table of Contents object
+   */
+  function TOC(tableObj) {
     // parse the table;
     try{
-      if(!$.isPlainObject(tableObj)) {throw 'ToC requires an {}'; }
-      if($.fn)
+      if(!$.isPlainObject(tableObj)) {throw 'TOC requires an {}'; }
       // set the window.onerror handler to catch errors when not in development mode, but don't overwrite it if it exists.
-      if(ToC.debug!=='development' && typeof _win.onerror !== 'function'){
+      if(TOC.debug!=='development' && typeof _win.onerror !== 'function'){
         _win.onerror = function () {
           _log('Window.onerror called with arguments: ',arguments);
           return true; // prevent error from being thrown to user.
@@ -38,11 +42,18 @@
       });
       return tableObj;
     } catch(err) {
-      ToC.errorParser({orig:err, type:'ToC() Table Parsing Error'});
+      TOC.errorParser({orig:err, type:'TOC() Table Parsing Error'});
     }
   }
 
-  // parses each row in a Table of Contents object
+  /* Private function ROW
+   * Parses each row in a Table of Contents object
+   * Param rowKey String: // In the Table of Contents object, the name for each row tableofcontents = { key:{} }
+   * Param rowObj Object:
+   * Param sectionKey String:
+   * Returns true;
+   */
+
   function Row(rowKey, rowObj, sectionKey) {
     var thisRowRequirementsStr = rowObj.when || _immediateEventName; // stores the names of rows this row will require data from
     var thisRowData = {}; // stores the data from required rows;
@@ -54,7 +65,7 @@
           thisRowData[requirement] = _rowData[requirement]; // add each requirement rows' data to this row's data
         });
 
-        var sectionHandlerReturn = ToC.sectionHandlers[sectionKey].parse(rowKey, rowObj, thisRowData); // parse the row with its sectionHandler's parser fn
+        var sectionHandlerReturn = TOC.sectionHandlers[sectionKey].parse(rowKey, rowObj, thisRowData); // parse the row with its sectionHandler's parser fn
 
         if (!(sectionHandlerReturn && sectionHandlerReturn.resolve && sectionHandlerReturn.done)) { // duck type check for deferred
           sectionHandlerReturn = $.Deferred().resolve(sectionHandlerReturn); // wrap non-deferreds in a deferred to normalize code flow
@@ -62,7 +73,7 @@
         
         sectionHandlerReturn
         .done(function (msg) { // when the section handler is done parsing (optionally accepts deferred)
-          var result = ToC.handlerParseTest(rowKey, rowObj, sectionKey, msg); // check that the interface passes
+          var result = TOC.handlerParseTest(rowKey, rowObj, sectionKey, msg); // check that the interface passes
           if (result !== 'passed') {throw result; } // if it doesn't, throw the return message.
           if (msg.publish === false) {return; } // don't publish if the returned object has publish.false set
           pubSub(rowKey).publish(msg); // and publish this row.
@@ -71,16 +82,17 @@
           throw 'sectionHandler deferred fail';
         });
       } catch (err) {
-        ToC.errorParser({orig:err, type:'Row Error', sectionKey:sectionKey, rowKey:rowKey, rowObj:rowObj });
+        TOC.errorParser({orig:err, type:'Row Error', sectionKey:sectionKey, rowKey:rowKey, rowObj:rowObj });
       }
     })
     .fail(function () {
-      ToC.errorParser({ orig:'Row reached fail instead of done state. This should never happen.'});
+      TOC.errorParser({ orig:'Row reached fail instead of done state. This should never happen.'});
     });
+    return true;
   }
 
-  // simple pubsub for parsing the ToC. Based on $.Deferred
-  /* Private function pubSub.  Used by ToC internally.
+  // simple pubsub for parsing the TOC. Based on $.Deferred
+  /* Private function pubSub.  Used by TOC internally.
   *  Simple pubsub for parsing the Table of Contents.
   *  Waits appropriately for rows. Based on $.Deferred
   *
@@ -99,7 +111,7 @@
             // TODO This only checks for all requires being met.
             // TODO Add logic for checking if only one of multiple requirements needs to be met
           } catch (err) {
-            ToC.errorParser({orig:err, type:'PubSub publish Error'});
+            TOC.errorParser({orig:err, type:'PubSub publish Error'});
           }
         });
       }
@@ -121,21 +133,21 @@
 
   // Public vars as defaults for overrides
 
-  /* Public function ToC.logErrorToServer
+  /* Public function TOC.logErrorToServer
   *  Override this fn logging messages to a server
   *  Useful for sending errors to Google Analytics so you can track down where occur.
   */
-  ToC.logErrorToServer = function (errorObj) {};
+  TOC.logErrorToServer = function (errorObj) {};
 
   
-  /* Public function ToC.errorParser
-  *  handles all thrown errors in ToC.
+  /* Public function TOC.errorParser
+  *  handles all thrown errors in TOC.
   *  param errorObj Object: {orig:err, ... } The original error is in the orig property.
   *  returns: undefined, or throws error if in development mode 
   */
-  ToC.errorParser = function (errorObj) {
-    if(ToC.debug!=='development'){
-      ToC.logErrorToServer(errorObj);
+  TOC.errorParser = function (errorObj) {
+    if(TOC.debug!=='development'){
+      TOC.logErrorToServer(errorObj);
       return;
     }
     _log(errorObj);
@@ -143,7 +155,7 @@
   };
 
   
-  /* Public function ToC.handlerParseTest(rowKey, rowObj, sectionName, returnVal)
+  /* Public function TOC.handlerParseTest(rowKey, rowObj, sectionName, returnVal)
   *  Ensures section handlers return a consistent response.
   *  Default is a plain object, but can be overridden. (not recommended unless you know what you're doing)
   *  
@@ -153,20 +165,20 @@
   *  param returnVal: The value to check for consistency
   *  returns: 'passed' if true, else an error message.
   */
-  ToC.handlerParseTest = function (rowKey, rowObj, sectionName, returnVal) {
+  TOC.handlerParseTest = function (rowKey, rowObj, sectionName, returnVal) {
     return $.isPlainObject(returnVal) ?
       'passed' :
       'section handler for ' + sectionName + ' must return plain object e.g., {}, or $.Deferred that resolves one.';
   };
 
   /* 
-   * Public var ToC.sectionHandlers
-   * Set some default section handlers for ToC
-   * Handlers must match the sections in the ToC
-   * Each handler's parse fn determines how each row in the ToC section will be parsed
-   * By default, all return a plain object or deferred to pass ToC.handlerParseTest()
+   * Public var TOC.sectionHandlers
+   * Set some default section handlers for TOC
+   * Handlers must match the sections in the TOC
+   * Each handler's parse fn determines how each row in the TOC section will be parsed
+   * By default, all return a plain object or deferred to pass TOC.handlerParseTest()
    */
-  ToC.sectionHandlers = {
+  TOC.sectionHandlers = {
     SHORTCUTS:{
       parse:function(rowKey, rowObj, requirementsObjs){
         // to aggregate common names as shortcuts
@@ -231,13 +243,13 @@
 
 
   // Public var debug.  If set to anything other than 'development', prevents errors from being thrown to the user;
-  ToC.debug = 'development';
+  TOC.debug = 'development';
 
-  ToC.version = "0.2";
+  TOC.version = "0.2";
 
   // define private variables;
   var _console = window.console || {log: function(){} }; // ensure calling console doesn't cause errors.
-  var _log = function(){if (ToC.debug === 'development') {_console.log.apply(_console,arguments);} };
+  var _log = function(){if (TOC.debug === 'development') {_console.log.apply(_console,arguments);} };
   var _rowData = {}; // stores all data passed by each row;
   var _rows = {}; // stores rows to check for uniques
   var _immediateEventName = 'asap'; // the event name that's published as soon as this script runs
@@ -248,6 +260,6 @@
   _win.onload = function () { pubSub('window_load').publish(); };
   _win.onunload = function () {pubSub('window_unload').publish(); };
   
-  if (_win.ToC) {_log('ToC defined more than once.  Aborting'); }
-  _win.ToC=ToC;
+  if (_win.TOC) {_log('TOC defined more than once.  Aborting'); }
+  _win.TOC=TOC;
 })(jQuery,window);
