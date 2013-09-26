@@ -17,19 +17,108 @@ TOCjs is for Developers.  Specifically those asking:
 ## What does TOCjs Do?
 
 ## How to use TOCjs?
-### Use the Default Sections
+
+### TOC Structure and Default Sections
+
+TOC is simple.  There is only one function to call: ```TOC()```, and it accepts one argument: a Table of Contents object ```TOC({})```.
+Each Table of Contents object contains sections to organize your code by.  TOC provides some default sections: scripts, locations, and functions.  Here's a simple Table of Contents using the defaults:
 
 ```JavaScript
 TOC({
-  LOCATIONS: {},
   SCRIPTS: {},
+  LOCATIONS: {},
   FUNCTIONS: {}
 });
 ```
 
-#### LOCATIONS: Take Actions When an URL Matches
-#### SCRIPTS: Load JavaScript When A Location Matches
-#### FUNCTIONS: Run Functions once the right files have loaded (and fail gracefully)
+While the table is technically correct, it doesn't do anything.  Let's give it some functionality.
+
+#### SCRIPTS
+
+Let's say we want to load a file called "home.js" that has functions we want on our homepage.  To load it, we just tell SCRIPTS about it:
+
+```JavaScript
+TOC({
+  SCRIPTS: {
+    homepage_js:{ load:'homepage.js' }
+  },
+  LOCATIONS: {},
+  FUNCTIONS: {}
+});
+```
+
+#### LOCATIONS: Only act When it's appropriate
+
+Great! home.js is loading.  But wait!  It's loading everywhere!  It only needs to load on the homepage!  No problem.  First we tell LOCATIONS where the homepage is.
+
+```JavaScript
+TOC({
+  SCRIPTS: {
+    home_js:{ load:'home.js' }
+  },
+  LOCATIONS: {
+    homepage:{ href:'home.html' }
+  },
+  FUNCTIONS: {}
+});
+```
+
+Then we tell the home.js script to load only on the homepage location.
+
+```JavaScript
+TOC({
+  SCRIPTS: {
+    home_js:{ when:'homepage', load:'home.js' }
+  },
+  LOCATIONS: {
+    homepage:{ href:'home.html' }
+  },
+  FUNCTIONS: {}
+});
+```
+
+Done!  Now it only loads on the homepage.
+
+#### FUNCTIONS
+
+But wait again!  We want to run some functions in that file after it loads.  The first turns the header blue, and the second is an alert that tells us its color.
+
+```JavaScript
+TOC({
+  SCRIPTS: {
+    home_js:{ when:'homepage', load:'home.js' }
+  },
+  LOCATIONS: {
+    homepage:{ href:'home.html' }
+  },
+  FUNCTIONS: {
+    blueHeader:{ when:'home_js', target:'#header', fn:'makeHeaderBlue' },
+    alertHeaderColor: { when: 'blueHeader', fn:'alertHeaderColor' }
+  }
+});
+```
+
+Oops.  Nothing happens.  Under the hood, TOC is calling ```$('#header').makeBlue();``` before the browser renders the ```<div id="header"></div>``` element.
+No problem!  That's what jQuery's ```$(document).ready()``` is for.  TOC provides a built in "when" event for it, called "dom_ready".  Let's add it.
+
+```JavaScript
+TOC({
+  SCRIPTS: {
+    home_js:{ when:'homepage', load:'home.js' }
+  },
+  LOCATIONS: {
+    homepage:{ href:'home.html' }
+  },
+  FUNCTIONS: {
+    blueHeader:{ when:'home_js,dom_ready', target:'#header', fn:'makeBlue' },
+    alertHeaderColor: { when: 'blueHeader', fn:'alertHeaderColor' }
+  }
+});
+```
+
+Now TOC waits for ```$(document).ready()``` before calling ```$('#header').makeBlue();```.  Woo hoo!
+
+That's a simple example. TODO: Make a JSfiddle.
 
 ### Create New TOC Sections (And share them with the community!)
 #### ELEMENT_LOCATIONS: Take Actions When An Element Exists
