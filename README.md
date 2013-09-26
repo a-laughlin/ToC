@@ -18,16 +18,26 @@ TOCjs is for Developers.  Specifically those asking:
 
 ## How to use TOCjs?
 ### Use the Default Sections
+
+'''javascript
+TOC({
+  LOCATIONS: {},
+  SCRIPTS: {},
+  FUNCTIONS: {}
+});
+'''
+
 #### LOCATIONS: Take Actions When an URL Matches
 #### SCRIPTS: Load JavaScript When A Location Matches
 #### FUNCTIONS: Run Functions once the right files have loaded (and fail gracefully)
 
 ### Create New TOC Sections (And share them with the community!)
 #### ELEMENT_LOCATIONS: Take Actions When An Element Exists
+#### SHORTCUTS: Combine locations and files into single terms for readability
 #### DATA_LOCATIONS: Take Actions When Cookie Data Matches
 #### ANALYTICS: Trigger Custom Analytics When Specific Functions Run
-#### JSON: Dynamically Load JSON Data
 #### EXTERNAL_CONTENT: Dynamically Load HTML Content
+#### JSON: Dynamically Load JSON Data
 
 ### Apply TOCjs in Different Scenarios
 #### Organize and Integrate Other Developers' Code (i.e., Legacy Code)
