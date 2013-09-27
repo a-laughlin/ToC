@@ -1,5 +1,5 @@
 // run a table
-ToC({
+TOC({
   LOCATIONS: {
     index1: {href: 'index.html'},
     index2: {href: 'index2.html'}
