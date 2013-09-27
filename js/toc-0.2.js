@@ -3,7 +3,7 @@
  *
  * Version 0.2
  *
- * Requires: jQuery > 1.7
+ * Requires: jQuery.Deferred and jQuery.fn.on. ( jQuery >= 1.7 )
  * 
  * Copyright 2013, Adam Laughlin
  * http://a-laughlin.com
@@ -14,8 +14,6 @@
 
 ;(function ($, _win) {
   'use strict';
-  
-  if($.fn.jquery < '1.7') {throw "TOCjs requires jQuery.Deferred() and 'jQuery.fn.on()'. Please use at least jQuery 1.7"}  
   
   /* Public function TOC
    * Parses a Table of Contents object
@@ -53,7 +51,6 @@
    * Param sectionKey String:
    * Returns true;
    */
-
   function Row(rowKey, rowObj, sectionKey) {
     var thisRowRequirementsStr = rowObj.when || _immediateEventName; // stores the names of rows this row will require data from
     var thisRowData = {}; // stores the data from required rows;
@@ -220,14 +217,44 @@
             executedDeferred.resolve(event);
         }
 
+        /* Private function execOneFn
+         * execute a single function
+         * param fname String: the name of a function
+         * param arg anything: an argument to pass it.
+         * 
+         * returns whatever exists at that namespace
+         * getContext('window.location.toString') returns the window.location.toString function.
+         */
         function execOneFn (fname, arg){ // execute a function
           _log('executing ' + fname);
-          $container[fname] ? // does $.fn[fname] exist as a jQuery.fn. function?
-            ($container = $container[fname].call($container, arg )): // yes, execute, reassign $container to preserve chain, and pass the argument 
-            (rowObj.context||_win)[fname](arg); // no, try execute in specified context, else window
+          var argArray = $.isArray(arg) ? arg : [arg];
+          fname in $container ? // does $.fn[fname] exist as a jQuery.fn. function?
+            ($container = $container[fname].apply($container, argArray)): // yes, execute, reassign $container to preserve chain, and pass the argument 
+            (executionContext)[fname].apply(executionContext, argArray); // no, try execute in specified context
         }
 
+        /* Private function getContext
+         * get a context from a string without running eval
+         * param contextStr String: 'console.log'
+         * 
+         * returns whatever exists at that namespace
+         * getContext('window.location') returns the window.location object.  You could then call window.location
+         */
+        function getContext(contextStr){
+          var contextObj = _win;
+          var i = 0;
+          var contextStringsArray = contextStr.split('.');
+          var L = contextStringsArray.length;
+          for(;i<L;i++){
+            if(contextStringsArray[i] in contextObj){
+              contextObj = contextObj[contextStringsArray[i]];
+            }
+          }
+          return contextObj;
+        }
+        
         _log('running parse on FUNCTIONS: '+ rowKey);
+        var executionContext = rowObj.context ? getContext(rowObj.context) : _win;
         var executedDeferred = $.Deferred();
         var $container = $(rowObj.container); // shortcut the container
         rowObj.on? // does rowObj.on exist? (e.g., {on:'click'}), 
