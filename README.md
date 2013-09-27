@@ -2,6 +2,30 @@
 
 A Table of Contents for your JavaScript.
 
+<!-- MarkdownTOC -->
+- Who is TOCjs for?
+- Why use TOCjs?
+- What does TOCjs Do?
+- How to use TOCjs?
+  - TOC Structure and Default Sections
+    - SCRIPTS
+    - LOCATIONS: Only act When it's appropriate
+    - FUNCTIONS
+  - Create New TOC Sections (And share them with the community!)
+    - ELEMENT_LOCATIONS: Take Actions When An Element Exists
+    - SHORTCUTS: Combine locations and files into single terms for readability
+    - DATA_LOCATIONS: Take Actions When Cookie Data Matches
+    - ANALYTICS: Trigger Custom Analytics When Specific Functions Run
+    - EXTERNAL_CONTENT: Dynamically Load HTML Content
+    - JSON: Dynamically Load JSON Data
+  - Apply TOCjs in Different Scenarios
+    - Organize and Integrate Other Developers' Code (i.e., Legacy Code)
+    - Test Your Code Before It Goes "live"
+    - Ensure Your Analytics Code is Running on All your Sites' Pages
+    - Have another scenario you don't see here? Ask!
+<!-- /MarkdownTOC -->
+
+
 ## Who is TOCjs for?
 
 TOCjs is for Developers.  Specifically those asking:
@@ -92,7 +116,7 @@ TOC({
     homepage:{ href:'home.html' }
   },
   FUNCTIONS: {
-    blueHeader:{ when:'home_js', target:'#header', fn:'makeHeaderBlue' },
+    blueHeader:{ when:'home_js', target:'#header', fn:'makeBlue' },
     alertHeaderColor: { when: 'blueHeader', fn:'alertHeaderColor' }
   }
 });
