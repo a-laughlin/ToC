@@ -88,12 +88,9 @@
     return true;
   }
 
-  // simple pubsub for parsing the TOC. Based on $.Deferred
-  /* Private function pubSub.  Used by TOC internally.
-  *  Simple pubsub for parsing the Table of Contents.
-  *  Waits appropriately for rows. Based on $.Deferred
-  *
-  *  param namesStr String: 'the unique name to subscribe with. Acceps comma delimited names.'
+  /* Private function pubSub.
+  *  Simple pubsub for handling {when:'foo'} arguments when parsing a Table of Contents
+  *  param namesStr String: The unique name to subscribe with. Acceps comma delimited names.
   */
   var pubSub = (function () {
     var callbacks = {};
@@ -208,22 +205,25 @@
       parse: function (rowKey, rowObj, whenObjs){
 
         // parsing helper functions
+        /* Private function execRowFns
+         * execute a single function
+         * param event Object: a plain object, or a jQuery event wrapped as {event:eventObj} to pass TOC.handlerParseTest
+         * returns: undefined
+         */
         function execRowFns(event){ // determine whether to exec one function or many
           typeof rowObj.fn==='string' ? // is rowObj.fn a function name string by itself?
             execOneFn(rowObj.fn): // yes, execute it
             $.each(rowObj.fn,function(fnam,arg){ // no, assume it's an object
               execOneFn(fnam, arg); // execute each function in rowObj.fn object with key as fnname and value as args
             });
-            executedDeferred.resolve(event);
+          executedDeferred.resolve(event);
         }
 
         /* Private function execOneFn
          * execute a single function
          * param fname String: the name of a function
          * param arg anything: an argument to pass it.
-         * 
-         * returns whatever exists at that namespace
-         * getContext('window.location.toString') returns the window.location.toString function.
+         * returns: undefined
          */
         function execOneFn (fname, arg){ // execute a function
           _log('executing ' + fname);
