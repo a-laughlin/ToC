@@ -21,7 +21,6 @@
    * Returns the Table of Contents object
    */
   function TOC(tableObj) {
-    // parse the table;
     try{
       if(!$.isPlainObject(tableObj)) {throw 'TOC requires an {}'; }
       // set the window.onerror handler to catch errors when not in development mode, but don't overwrite it if it exists.
@@ -35,7 +34,7 @@
       $.each(tableObj, function (sectionKey, sectionObj) {
         $.each(sectionObj, function (rowKey, rowObj) {
           if (_rows[rowKey]) {throw 'All row keys must be unique. Key ' + rowKey + ' appears more than once.'; }
-          _rows[rowKey] = new Row(rowKey, rowObj, sectionKey);
+          _rows[rowKey] = new _Row(rowKey, rowObj, sectionKey);
         });
       });
       return tableObj;
@@ -44,18 +43,18 @@
     }
   }
 
-  /* Private function ROW
-   * Parses each row in a Table of Contents object
-   * Param rowKey String: // In the Table of Contents object, the name for each row tableofcontents = { key:{} }
-   * Param rowObj Object:
-   * Param sectionKey String:
+  /* Private function _Row
+   * Parses a Table of Contents row
+   * Param rowKey String: In the Table of Contents object, the name for each row tableofcontents = { key:{} }
+   * Param rowObj Object: The row object itself sectionKey:{rowKey:rowObj}
+   * Param sectionKey String: the name of a section of rows (e.g., LOCATION) sectionKey:{rowKey:rowObj}
    * Returns true;
    */
-  function Row(rowKey, rowObj, sectionKey) {
+  function _Row(rowKey, rowObj, sectionKey) {
     var thisRowRequirementsStr = rowObj.when || _immediateEventName; // stores the names of rows this row will require data from
     var thisRowData = {}; // stores the data from required rows;
 
-    pubSub(thisRowRequirementsStr).subscribe() // wait for the required rows to publish
+    _pubSub(thisRowRequirementsStr).subscribe() // wait for the required rows to publish
     .done(function () { // when required rows are ready...
       try {
         $.map(thisRowRequirementsStr.split(','), function (requirement) {
@@ -73,7 +72,7 @@
           var result = TOC.handlerParseTest(rowKey, rowObj, sectionKey, msg); // check that the interface passes
           if (result !== 'passed') {throw result; } // if it doesn't, throw the return message.
           if (msg.publish === false) {return; } // don't publish if the returned object has publish.false set
-          pubSub(rowKey).publish(msg); // and publish this row.
+          _pubSub(rowKey).publish(msg); // and publish this row.
         })
         .fail(function(){
           throw 'sectionHandler deferred fail';
@@ -88,11 +87,11 @@
     return true;
   }
 
-  /* Private function pubSub.
+  /* Private function _pubSub.
   *  Simple pubsub for handling {when:'foo'} arguments when parsing a Table of Contents
   *  param namesStr String: The unique name to subscribe with. Acceps comma delimited names.
   */
-  var pubSub = (function () {
+  var _pubSub = (function () {
     var callbacks = {};
     return function (namesStr) {
 
@@ -117,7 +116,7 @@
       }
 
       if (typeof namesStr !== 'string') {
-        throw { name: 'PubSub Naming Error', message: 'pubSub(...name...) only accepts strings' };
+        throw { name: 'PubSub Naming Error', message: '_pubSub(...name...) only accepts strings' };
       }
 
       return {publish: publish, subscribe: subscribe };
@@ -282,10 +281,10 @@
   var _immediateEventName = 'asap'; // the event name that's published as soon as this script runs
 
   // publish commonly needed events
-  pubSub(_immediateEventName).publish();
-  $(pubSub('dom_ready').publish);
-  _win.onload = function () { pubSub('window_load').publish(); };
-  _win.onunload = function () {pubSub('window_unload').publish(); };
+  _pubSub(_immediateEventName).publish();
+  $(_pubSub('dom_ready').publish);
+  _win.onload = function () { _pubSub('window_load').publish(); };
+  _win.onunload = function () {_pubSub('window_unload').publish(); };
   
   if (_win.TOC) {_log('TOC defined more than once.  Aborting'); }
   _win.TOC=TOC;
