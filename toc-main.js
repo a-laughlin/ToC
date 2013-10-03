@@ -4,7 +4,7 @@ TOC({
     index1: {href: 'index.html'},
     index2: {href: 'index2.html'}
   },
-  FILES: {
+  SCRIPTS: {
     dynamicLoad: {when: 'afterPrompt', load: 'js/fns_file2.js'}, // waits to load this file until after the user has clicked a prompt
   },
   FUNCTIONS: {
