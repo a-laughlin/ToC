@@ -1,10 +1,5 @@
 ;(function($){
-  "use strict"
-
-  // stub the console in case it isn't available.
-  if(!console) console={log:function(){}};
-  if(!console.error) console.error = console.log;
-
+  "use strict";
 
   // Set markdown conversion default options (except highlight which has no default)
   marked.setOptions({

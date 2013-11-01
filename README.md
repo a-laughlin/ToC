@@ -18,10 +18,14 @@ A Table of Contents for your JavaScript.
     - ANALYTICS: Trigger Custom Analytics When Specific Functions Run
     - EXTERNAL_CONTENT: Dynamically Load HTML Content
     - JSON: Dynamically Load JSON Data
+  - Removing boilerplate
+  - Common events
+  - Errors and Debugging
+    - Debug Mode : Errors
+    - Debug Mode: Timing
+    - Production Mode: Errors
   - Apply TOCjs in Different Scenarios
     - Organize and Integrate Other Developers' Code (i.e., Legacy Code)
-    - Test Your Code Before It Goes "live"
-    - Ensure Your Analytics Code is Running on All your Sites' Pages
     - Have another scenario you don't see here? Ask!
 <!-- /MarkdownTOC -->
 
@@ -45,7 +49,7 @@ TOCjs is for Developers.  Specifically those asking:
 ### TOC Structure and Default Sections
 
 TOC is simple.  There is only one function to call: ```TOC()```, and it accepts one argument: a Table of Contents object ```TOC({})```.
-Each Table of Contents object contains sections to organize your code by.  TOC provides some default sections: scripts, locations, and functions.  Here's a simple Table of Contents using the defaults:
+Each Table of Contents object contains sections to organize your code by.  TOC provides some default sections: scripts, locations, and functions, and you can write your own if those don't suit you.  Here's a simple Table of Contents using the defaults:
 
 ```JavaScript
 TOC({
@@ -77,13 +81,9 @@ Great! home.js is loading.  But wait!  It's loading everywhere!  It only needs t
 
 ```JavaScript
 TOC({
-  SCRIPTS: {
-    home_js:{ load:'home.js' }
-  },
   LOCATIONS: {
     homepage:{ href:'home.html' }
-  },
-  FUNCTIONS: {}
+  }
 });
 ```
 
@@ -96,8 +96,7 @@ TOC({
   },
   LOCATIONS: {
     homepage:{ href:'home.html' }
-  },
-  FUNCTIONS: {}
+  }
 });
 ```
 
@@ -134,7 +133,7 @@ TOC({
     homepage:{ href:'home.html' }
   },
   FUNCTIONS: {
-    blueHeader:{ when:'home_js,dom_ready', target:'#header', fn:'makeBlue' },
+    blueHeader:{ when:'home_js', target:'#header', fn:'makeBlue' },
     alertHeaderColor: { when: 'blueHeader', fn:'alertHeaderColor' }
   }
 });
@@ -151,9 +150,79 @@ That's a simple example. TODO: Make a JSfiddle.
 #### ANALYTICS: Trigger Custom Analytics When Specific Functions Run
 #### EXTERNAL_CONTENT: Dynamically Load HTML Content
 #### JSON: Dynamically Load JSON Data
+### Removing boilerplate
+### Common events
+If you've ever gotten tired of typing $(document).ready(function(){...}), this is for you.  TOC's built-in events enable you to wait for common events with the following syntax.
+* ```JavaScript{when:'immediate'}```
+* ```JavaScript{when:'dom_ready'}```
+* ```JavaScript{when:'window_load'}```
+* ```JavaScript{when:'window_unload'}```
+Even better, if you omit the "when" param, it defaults to document ready, so you never need to type it.
+
+### Errors and Debugging
+TOCjs aims to make errors stand out clearly to you and disappear for your users.  It does this through different development and production modes.  By default, ```TOC.debug = 'development';```.
+
+#### Debug Mode : Errors
+As a design philosophy, the error messages in TOCjs don't stop at telling you there's a problem.  They explain how to fix it and output to the console.  Let's say you did this {when:2, ... } in your table.  Since the "when" parameter only accepts strings, You'd get an error like this (In Chrome Dev Tools):
+
+```
+ERROR: Object v
+  message: "ERROR "when:" only accepts strings"
+  __proto__: Object
+rowKey: "delayedFive"
+sectionKey: "FUNCTIONS"
+type: "TOC() Table Parsing Error"
+```
+#### Debug Mode: Timing
+Since one of the biggest debugging headaches can be timing issues, debugging mode provides lightweight script timing.  For example, this table of contents:
+```JavaScript
+TOC({
+    SCRIPTS: {
+      scripts_main:{when:'immediate', load:'js/fns_file1.js'},
+      scripts_two:{when:'changeThree', load:'js/fns_file2.js'}
+    },
+    FUNCTIONS: {
+      oneFast: {when: 'scripts_main', target:'.one', fn: 'fnOne'},
+      twoClicked: {when: 'scripts_main', container: 'body', target: '.two', on: 'click' , fn: 'fnTwo'},
+      changeThree: {when: 'twoClicked', target: '.three', fn: 'fnThree' },
+      changeFour:{when:'scripts_two', context:'window',fn:'someVendorCode'},
+      delayedFive: {when: 'twoClicked', target: '.five', fn: 'delayedPublish5000' },
+      delayedSix: {when: 'delayedFive', target: '.six', fn: {css:{backgroundColor:'#D598FD'}} }
+    }
+});
+```
+Produces something close to this (some detail removed for example purposes)
+```
+0ms immediate:
+4ms TOC Parse Object {SCRIPTS: Object}
+6ms TOC Parse End
+29ms dom_ready:
+42ms window_load:
+107ms TOC Parse Object {SCRIPTS: Object, FUNCTIONS: Object}
+108ms TOC Parse End
+109ms toc_main: Object {data:...}
+113ms scripts_main: Object {data:...}
+118ms oneFast: Object {}
+120ms main_ready: Object {}
+131ms bootstrap: Object {data: ...}
+(I clicked after 2 seconds, which fires fnTwo)
+2034ms twoClicked: Object {event: x.Event}
+2036ms changeThree: Object {}
+2048ms scripts_two: 
+2050ms changeFour: Object {}
+7040ms delayed for 5 seconds
+7040ms delayedFive: Object {}
+7041ms delayedSix: Object {} 
+
+```
+
+#### Production Mode: Errors
+When ```TOC.debug``` differs from exactly 'development', you're in production mode.  Console logging and timing stop.  Most errors will be invisible to the user.  However, TOC provides a helper function to make debugging production issues easier:
+```JavaScript
+TOC.logErrorToServer = function (errorObj) {};
+```
+When an error happens, this function gets called.  It's a great place to put a call to your analytics tool.
 
 ### Apply TOCjs in Different Scenarios
 #### Organize and Integrate Other Developers' Code (i.e., Legacy Code)
-#### Test Your Code Before It Goes "live"
-#### Ensure Your Analytics Code is Running on All your Sites' Pages
 #### Have another scenario you don't see here? Ask!

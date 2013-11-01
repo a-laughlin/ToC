@@ -75,10 +75,21 @@
         <div class="col-lg-2 col-md-2 col-sm-2 col-xs-2">
           <h2>Nav</h2>
           <ul id="docs-nav" class="nav nav-pills nav-stacked">
-            <li><a href="overview.md">Overview</a></li>
+            <li><a href="README.md">Overview</a></li>
             <li><a href="markdowntest.md">markdowntest</a></li>
           </ul>
           
+        </div>
+        <div class="toc-example col-lg-10 col-md-10 col-sm-10 col-xs-10">
+          <div class="example-container">
+            <div class="one">I'm One. I run immediately, before DOM ready.</div>
+            <div class="two">I'm Two.  I change when clicked.</div>
+            <div class="three">I'm Three.  I change when Two is clicked</div>
+            <div class="four">I'm Four.  I wait for Two's click, load a file, and change once it  loads.</div>
+            <div class="five">I'm Five.  I wait for Four to change, then wait five seconds longer.</div>
+            <div class="six">I'm Six.  I wait for five, then change my color to purple!</div>
+          </div>
+
         </div>
         <div id="markdown-container" class="col-lg-10 col-md-10 col-sm-10 col-xs-10">
 
@@ -97,11 +108,15 @@
     <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.2.min.js"><\/script>')</script>
     <script src="js/toc-0.2.js"></script>
     <script>
+      
+
       TOC({
         SCRIPTS: {
-          toc_main: {load: 'toc-main.js'}, // to load different files for multiple domains, preface each with location.hostname + path;
-          scripts_main: {load: 'js/fns_file1.js'},
-          bootstrap: {load: 'js/vendor/bootstrap.min.js'}
+          toc_main: {when:'immediate',load: 'toc-main.js'},
+          scripts_main: {when:'immediate', load: 'js/fns_file1.js'},
+          markdown_js: {when:'immediate', load: 'js/marked.js'},
+          bootstrap: {when:'immediate', load: 'js/vendor/bootstrap.min.js'},
+          main_js: {when:'dom_ready,markdown_js', load: 'js/main.js'},
         }
       });
     </script>

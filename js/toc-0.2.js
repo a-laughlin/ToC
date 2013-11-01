@@ -1,9 +1,8 @@
 /*!
  * TOCjs.  A Table of Contents for your site's code.
- * @a
  * @version 0.2
  * @author Adam Laughlin
- * @requires jQuery.Deferred and jQuery.fn.on. ( jQuery >= 1.7 )
+ * @requires jQuery >= 1.7 (jQuery.fn.on)
  * 
  * Copyright 2013, Adam Laughlin
  * http://a-laughlin.com
@@ -25,27 +24,37 @@
    * @returns     {undefined}
    */
   function TOC(tableObj) {
-    try{
-      if(!$.isPlainObject(tableObj)) {throw 'TOC requires an {}'; }
-      _log('TOC Parse');
-      // set the window.onerror handler to catch errors when not in development mode, but don't overwrite it if it exists.
+    try {
+      if(!$.isPlainObject(tableObj)) {_log('ERROR: TOC requires an {}'); }
+      _log('TOC Parse',tableObj);
+      // set the window.onerror handler to catch errors when not in development mode.  Don't overwrite it if already exists.
       if(TOC.debug !== 'development' && typeof _win.onerror !== 'function'){
         _win.onerror = function () {
           _log('Window.onerror called with arguments: ',arguments);
           return true; // prevent error from being thrown to user.
         };
       }
+      
+      var sectionKey,rowKey,sectionObj,rowObj;
+      
+      // parse the sections and rows
+      for(sectionKey in tableObj) {
+        if(tableObj.hasOwnProperty(sectionKey)){
+          sectionObj = tableObj[sectionKey];
+          for(rowKey in sectionObj) {
+            if(sectionObj.hasOwnProperty(rowKey)){
+              rowObj = sectionObj[rowKey];
+              if (rowKey in _rows) {throw 'All row keys must be unique. Key ' + rowKey + ' appears more than once.'; }
+              _parseRow(rowKey, rowObj, sectionKey); // parse the row
+              _rows[rowKey] = true; // set to true for future checks
+            }
+          }
+        }
+      }
 
-      $.each(tableObj, function (sectionKey, sectionObj) { // loop over the table sections
-        $.each(sectionObj, function (rowKey, rowObj) { // loop over rows
-          if (rowKey in _rows) {throw 'All row keys must be unique. Key ' + rowKey + ' appears more than once.'; }
-          _parseRow(rowKey, rowObj, sectionKey); // parse the row
-          _rows[rowKey] = true; // set to true for future checks
-        });
-      });
       _log('TOC Parse End');
-    } catch(err) {
-      TOC.errorParser({orig:err, type:'TOC() Table Parsing Error'});
+    }  catch(err) {
+      TOC.errorParser({ERROR:err.ERROR||err, sectionKey:sectionKey, rowKey:rowKey, type:'TOC() Table Parsing Error'});
     }
   }
 
@@ -61,8 +70,11 @@
    * @return      {undefined}
    */
   function _parseRow(rowKey, rowObj, sectionKey) {
-    var thisRowRequirementsStr = rowObj.when || _immediateEventName; // stores the names of rows this row will require data from
+    var thisRowRequirementsStr = rowObj.when || 'dom_ready'; // stores the names of rows this row will require data from
     var thisRowData = {}; // stores the data from required rows;
+    if (typeof thisRowRequirementsStr !== 'string') {
+      throw {message:'ERROR "when:" only accepts strings'};
+    }
 
     _pubSub(thisRowRequirementsStr).subscribe() // wait for the required rows to publish
     .done(function () { // when required rows are ready...
@@ -80,23 +92,22 @@
         sectionHandlerReturn
         .done(function (msg) { // when the section handler is done parsing (optionally accepts deferred)
           // enforce a consistent sectionHandler interface.
-          if(!$.isPlainObject(msg)){
-            throw 'section handler for ' + sectionKey + ' must return plain object e.g., {}, or $.Deferred that resolves one.';
-          }
+          try{
+            if(!$.isPlainObject(msg)){
+              throw 'section handler ' + sectionKey + ' must return a {}, or $.Deferred that resolves one.';
+            }
 
-          if (msg.publish === false) {return; } // don't publish if the returned object has publish.false set
-          _pubSub(rowKey).publish(msg); // and publish this row.
-        })
-        .fail(function(){
-          _log('sectionHandler' + sectionKey + ' deferred failed at row ' + rowKey);
+            if (msg.publish === false) {return; } // don't publish if the returned object has publish.false set
+            _pubSub(rowKey).publish(msg); // and publish this row.
+          } catch (er){
+            TOC.errorParser({type:'ERROR', sectionKey:sectionKey, rowKey:rowKey, ERROR:er.ERROR||er});
+          }
         });
       } catch (err) {
-        TOC.errorParser({orig:err, type:'Row Error', sectionKey:sectionKey, rowKey:rowKey, rowObj:rowObj });
+        // TODO figure out how to throw an error in a handler and get intuitive line number reporting in the console.
+        TOC.errorParser({type:'ERROR', sectionKey:sectionKey, rowKey:rowKey, ERROR:err.ERROR||err});
       }
     });
-    // .fail(function () {
-    //   throw 'Row ' + rowKey + ' reached fail instead of done state. This should never happen.';
-    // });
   }
 
   /** Private function _pubSub
@@ -112,15 +123,11 @@
 
       function publish(msg) {
         $.map(namesStr.split(','), function (cbname) {
-          try {
-            _log('publishing',cbname,msg);
-            _rowData[namesStr] = msg; // store the published message in row data for reference when other rows "require" it.
-            (callbacks[cbname] = callbacks[cbname] || $.Deferred()).resolve(msg); // use existing deferred or create one, then resolve.
-            // TODO This only checks for all whens being met..
-            // Add logic for checking if only one of multiple requirements needs to be met
-          } catch (err) {
-            TOC.errorParser({orig:err, type:'PubSub publish Error'});
-          }
+          _log(cbname+': ',msg||''); // log the messages as intuitively as possible
+          _rowData[namesStr] = msg; // store the published message in row data for reference when other rows use "when".
+          (callbacks[cbname] = callbacks[cbname] || $.Deferred()).resolve(msg); // use existing deferred or create one, then resolve.
+          // TODO This only checks for all whens being met..
+          // Add logic for checking if only one of multiple requirements needs to be met... e.g., && vs ||.
         });
       }
 
@@ -130,10 +137,6 @@
         }));
       }
 
-      if (typeof namesStr !== 'string') {
-        throw '_pubSub(...name...) only accepts strings';
-      }
-
       return {publish: publish, subscribe: subscribe };
     };
   })();
@@ -141,13 +144,17 @@
   // for debugging
   function _log () {
     if (TOC.debug === 'development') {
-      _console.log.apply(_console,[((new Date()) - startTime)+'ms', arguments]);
+      var args = [((new Date()) - startTime)+'ms'];
+      args.push.apply(args,arguments);
+      _console.log.apply(_console,args);
     }
-  }
+  };
+
+  TOC.log = _log; // enable users to use _log fn in handlers
 
   
   /*============================================================
-  =            Public Default Functions to Override            =
+  =            Public Default Functions                        =
   ============================================================*/
 
   /** Public function TOC.logErrorToServer
@@ -170,15 +177,43 @@
       TOC.logErrorToServer(errorObj);
       return;
     }
-    _log(errorObj);
-    throw errorObj;
+    _console.error(errorObj);
   };
 
 
-  /*============================================================
-  =            Public Default Section Handlers to Override     =
-  ============================================================*/
+  // Public var debug.  If set to anything other than 'development', prevents errors from being thrown to the user;
+  TOC.debug = 'development';
 
+  TOC.version = "0.2";
+
+  // define private variables;
+  var _console = _win.console || {log: function(){},error:function(){} }; // ensure calling console doesn't cause errors.
+  var _rowData = {}; // stores all data passed by each row;
+  var _rows = {}; // stores rows to check for uniques
+  var immediateEventName = 'asap'; // the event name that's published as soon as this script runs
+  var startTime = new Date(); // for debugging
+  // publish commonly needed events
+  _pubSub('immediate').publish(); // publish immediate immediately
+  $(function(){_pubSub('dom_ready').publish()}); // publish dom_ready when $(document).ready();
+  _win.onload = function(){_pubSub('window_load').publish()};
+  _win.onunload = function(){_pubSub('window_unload').publish()};
+  
+  if (_win.TOC) {_log('TOC defined more than once.  Aborting'); }
+  _win.TOC=TOC;
+})(jQuery,window);
+
+
+
+
+
+
+/*============================================================
+=            Default Section Handlers to Override            =
+============================================================*/
+
+;(function ($, _win) {
+  'use strict';
+  
   /* 
    * Public var TOC.sectionHandlers
    * Set some default section handlers for TOC
@@ -189,18 +224,17 @@
   TOC.sectionHandlers = {
     SHORTCUTS:{
       // to aggregate common names as shortcuts.  Return a plain object to pass the interface check.
-      parse:function(rowKey, rowObj, whenObjs){
+      parse:function (rowKey, rowObj, whenObjs){
         return {}; // we're just aggregating.  No need to do anything.
       }
     },
     LOCATIONS: {
       // checks rowObj.href against location.href before publishing the row.
       parse: function (rowKey, rowObj, whenObjs) {
-        if (typeof rowObj.href === 'string' && window.location.href.indexOf(rowObj.href) > -1 ) { // if string passed, check location href for it.
-          return { location: rowObj.href }; // return something to indicate it passed.
-        }
-        if( rowObj.href.test && rowObj.href.test(location.href) ){  // else duck type for regex and check the location
-          return { location: rowObj.href }; // return something to indicate it passed.
+        // if string passed, check location href for it.
+        if (( typeof rowObj.href === 'string' && window.location.href.indexOf(rowObj.href) > -1 ) ||
+          (rowObj.href.test && rowObj.href.test(location.href))) { // else duck type for regex and check the location
+          return { location: rowObj.href }; // if either test passes, return an object to indicate so.
         }
         return {publish: false }; // else return something telling the row not to publish its name for other rows.
       }
@@ -209,14 +243,22 @@
       // loads files that other rows can wait for
       parse: function (rowKey, rowObj, whenObjs) {
         // $.getScript() doesn't cache the scripts, so use $.ajax
-        return $.ajax({
+        // create a deferred to ensure we wait appropriately for it.
+        // For some reason $.ajax doesn't work by itself despite working like a promise.  Need to look into that.
+        var loadingStatus = $.Deferred(); 
+
+        $.ajax({
           url: rowObj.load,
           cache: true, 
           dataType: 'script'
         })
-        .fail(function(){
-          _log('SCRIPTS $.ajax failed on file: ' + rowObj.load);
+        .done(function(data){
+          loadingStatus.resolve({data:data});
+        })
+        .fail(function(xhr){
+          loadingStatus.reject({xhr:xhr});
         });
+        return loadingStatus;
       }
     },
     FUNCTIONS: {
@@ -225,42 +267,42 @@
         /**
          * Private function _execRowFns
          * Execute any functions in rowObj.fn, and resolve a deferred when complete;
+         * @param  {String} ctxt: the context (a.k.a. namespace where the fn lives)
          * @param  {Object} event: A plain object {}, or a jQuery event wrapped as {event:eventObj} to pass TOC.handlerParseTest
          * @return {undefined}
          */
-        function _execRowFns(event){ // determine whether to exec one function or many
+        function _execRowFns(ctxt, event){ // determine whether to exec one function or many
           var fnReturns = []; // store the fn returns so that we can wait for them in case one contains a deferred.
+          var self = this;
           typeof rowObj.fn==='string' ? // is rowObj.fn a function name string by itself?
-            fnReturns.push(_execOneFn(rowObj.fn)): // yes, execute it
+            fnReturns.push(_execOneFn(ctxt,rowObj.fn,event)): // yes, execute it
             $.each(rowObj.fn,function(fnam,arg){ // no, assume it's an object
-              fnReturns.push(_execOneFn(fnam, arg)); // execute each function in rowObj.fn object with key as fnname and value as args
+              fnReturns.push(_execOneFn(ctxt, fnam, event, arg)); // execute each function in rowObj.fn object with key as fnname and value as args
             });
 
           $.when.apply(null,fnReturns) // after all functions finish, execute immediately if no deferreds, else wait for them.
           .always(function(){ // execute whether results succeed or fail (or aren't deferreds)
-            rowFnsStatusDeferred.resolve(event); // resolve the row's fnStatus deferred to publish the row.
+            rowFnsStatusDeferred.resolve(event||{}); // resolve the row's fnStatus deferred to publish the row.
           })
         }
 
         /**
          * Private function _execOneFn
          * Decides how to execute one function, then executes it
+         * @param  {String} ctxt: the context (a.k.a. namespace where the fn lives)
          * @param  {String} fname: a function name
          * @param  {Anything} arg: an argument to pass it
          * @return {Anything} returns whatever the function returns
          */
-        function _execOneFn (fname, arg){ // execute a function
-          _log('executing ' + fname);
-          var argArray = $.isArray(arg) ? arg : [arg];
-          if(fname in $container){ // if fname is a jQuery.fn. function
-            var retVal = $container[fname].apply($container, argArray); // execute it on the collection
-            if(retVal instanceof $) $container = retVal; // if it returns a jquery object, reassign it to $container to preserver chain
-            return $container; // and return the value;
+        function _execOneFn (ctxt, fname, event, arg){ // execute a function
+          // TOC.log('executing ' + fname);
+          var argArray = $.isArray(arg) ? arg : [arg]; // wrap any non-array arguments in an array to normalize flow
+          if(fname in ctxt){ // if fname is a jQuery.fn. function
+            var retVal = ctxt[fname].apply(ctxt, argArray); // execute it on the collection
+            if (retVal instanceof $) return ctxt = retVal; // if it returns a jquery object, reassign it to $container to preserver chain
+            return retVal; // and return the value;
           }
-          if (fname in executionContext){
-            return executionContext[fname].apply(executionContext, argArray); // else execute the fn in its context
-          }
-          throw '{context:...} error. No function named ' + fname + ' exists in ' + (rowObj.context||'window');
+          throw 'No function named ' + fname + ' exists in ' + (rowObj.context||'jQuery');
         }
 
         /**
@@ -271,8 +313,8 @@
          *                     window.location object.
          */
         function _getContext(contextStr){
-          var contextObj = _win;
-          if(contextStr === undefined) { return _win; }
+          var contextObj = window;
+          if(contextStr === undefined) { return contextObj; }
           var i = 0;
           var contextStringsArray = contextStr.split('.');
           var L = contextStringsArray.length;
@@ -286,40 +328,30 @@
           return contextObj;
         }
         
+        
+        function boundFn(event){ // shortcut for _execRowFns since it is called in three places below
+          _execRowFns($(this),{event:event});// execute the functions
+        }
+
+
         // begin rowObj.fn parsing
-        var executionContext = _getContext(rowObj.context);  // set a context if it exists. Default === window.
-        var rowFnsStatusDeferred = $.Deferred(); // Tracks when all the row's functions have executed.
-        var $container = $(rowObj.container); // shortcut the container
-        rowObj.on? // does rowObj.on exist? (e.g., {on:'click'}), 
-          $container.on(rowObj.on, rowObj.target||rowObj.container, function(event){ // yes, bind the event
-            _execRowFns({event:event});// execute the functions
-          }):
-          _execRowFns({});// no event type specified. execute immediately
+        var rowFnsStatusDeferred = $.Deferred(); // Resolves in _execRowFns when all the row's functions have executed.
+
+        if(rowObj.target){
+          rowObj.on ? // is an event handler specified via rowObj.on? (e.g., {on:'click'}), 
+            rowObj.container ? // yes...  Does it have a container ?
+              $(rowObj.container).on(rowObj.on, rowObj.target, boundFn): // yes... delegate event handling to container
+              $(rowObj.target).on(rowObj.on, boundFn): // no... bind handler directly
+            _execRowFns($(rowObj.target),{}); // no. execute immediately.
+        } else if (rowObj.context) {
+          _execRowFns(_getContext(rowObj.context)) // call in a context.  Default is window.
+        } else {
+          throw rowKey + ' must at least have a target or context defined.';
+        }
+
 
         return rowFnsStatusDeferred;
       }
     }
   };
-
-
-  
-  // Public var debug.  If set to anything other than 'development', prevents errors from being thrown to the user;
-  TOC.debug = 'development';
-
-  TOC.version = "0.2";
-
-  // define private variables;
-  var _console = _win.console || {log: function(){} }; // ensure calling console doesn't cause errors.
-  var _rowData = {}; // stores all data passed by each row;
-  var _rows = {}; // stores rows to check for uniques
-  var _immediateEventName = 'asap'; // the event name that's published as soon as this script runs
-  var startTime = new Date(); // for debugging
-  // publish commonly needed events
-  _pubSub(_immediateEventName).publish();
-  $(_pubSub('dom_ready').publish);
-  _win.onload = _pubSub('window_load').publish;
-  _win.onunload = _pubSub('window_unload').publish;
-  
-  if (_win.TOC) {_log('TOC defined more than once.  Aborting'); }
-  _win.TOC=TOC;
 })(jQuery,window);
